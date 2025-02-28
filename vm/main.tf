@@ -54,14 +54,42 @@ resource "vcd_nsxt_network_dhcp_binding" "dhcp_binding" {
   binding_type = "IPV4"
   ip_address   = var.yaml.networks[count.index].ip
   lease_time   = 3600
-  mac_address  = resource.vcd_vm.vcd_vm.network[count.index].mac
+
+
+  mac_address = resource.vcd_vm.vcd_vm.network[count.index].mac
+
+  /*
+  In case of DHCP binding, we need to takin into account next nuances:
+  - if we are under the first creating of a VM we will get all requested DHCP bindings from the VCD regardless the fact that we do not
+    have a VM yet and we do not know the MAC address of the VM
+  - in case of changing the networking properties of a VM (e.g. we are about to add new network to the VM) we will faced with an issue
+    that we do not have a MAC address of the network interface and we can not create a DHCP binding
+  The last case (we think so) is coused by the vcd provider and could not be solved in the right way without fixing them.
+  
+  The workaround could be like that:
+  1. We need to taint the VM resource that should to be changed
+    # ./bin/terraform taint 'module.vm[0].vcd_vm.vcd_vm'
+  2. We need to apply the changes (!!!the VM resource will be recreated!!!)
+
+  OR we can use the next workaround:
+  1. Manually create a DHCP binding in the VCD
+  2. Import the changes to the terraform state manually
+  3. Apply the changes
+  */
+
   dns_servers = [
     data.terraform_remote_state.networking.outputs.networking[var.yaml.networks[count.index].rs_network_index].vcd_network[0].dns1,
     data.terraform_remote_state.networking.outputs.networking[var.yaml.networks[count.index].rs_network_index].vcd_network[0].dns2
   ]
-  /*
-  dhcp_v4_config {
-    gateway_ip_address = var.yaml.networks[count.index].gateway
+
+
+  dynamic "dhcp_v4_config" {
+    for_each = var.yaml.networks[count.index].gateway == "" ? toset([]) : toset([1])
+
+    content {
+      gateway_ip_address = var.yaml.networks[count.index].gateway
+      hostname           = var.yaml.name
+    }
   }
-*/
+
 }
