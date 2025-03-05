@@ -21,11 +21,13 @@ data "vcd_org_vdc" "default" {
 data "terraform_remote_state" "networking" {
   backend = "s3"
   config = {
-    bucket                      = var.s3_rs_bucket
-    key                         = var.s3_rs_key
-    secret_key                  = var.s3_rs_secret_key
-    access_key                  = var.s3_rs_access_key
-    endpoints                   = { s3 = "http://127.0.0.1:9000" }
+    bucket     = var.s3_rs_bucket
+    key        = var.s3_rs_key
+    secret_key = var.s3_rs_secret_key
+    access_key = var.s3_rs_access_key
+    endpoints = {
+      s3 = "https://minio.itsmartflex.internal"
+    }
     region                      = "main"
     skip_credentials_validation = true
     skip_requesting_account_id  = true
